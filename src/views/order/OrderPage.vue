@@ -1,85 +1,163 @@
 <template>
-  <div class="order-list-container">
-    <div class="header-actions">
-      <h2>我的订单</h2>
-      <el-button type="primary" size="small" @click="$router.push('/')"
-        >返回首页</el-button
-      >
-    </div>
+  <div class="order-page">
+    <div class="container">
+      <section class="hero-card">
+        <div class="hero-text">
+          <p class="hero-kicker">Sun Mall</p>
+          <h1>历史订单</h1>
+          <p class="hero-desc">查看订单状态、剩余支付时间和商品明细</p>
+        </div>
+        <div class="hero-actions">
+          <el-button plain icon="el-icon-house" @click="$router.push('/')">
+            返回首页
+          </el-button>
+        </div>
+      </section>
 
-    <el-table :data="orders" border style="width: 100%" v-loading="loading">
-      <el-table-column prop="id" label="订单号" width="200"></el-table-column>
+      <section class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-icon">
+            <i class="el-icon-document"></i>
+          </div>
+          <div class="stat-text">
+            <p class="stat-label">当前页订单</p>
+            <p class="stat-value">{{ orders.length }}</p>
+          </div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon pending">
+            <i class="el-icon-time"></i>
+          </div>
+          <div class="stat-text">
+            <p class="stat-label">待支付</p>
+            <p class="stat-value">{{ pendingCount }}</p>
+          </div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon success">
+            <i class="el-icon-circle-check"></i>
+          </div>
+          <div class="stat-text">
+            <p class="stat-label">已完成</p>
+            <p class="stat-value">{{ completedCount }}</p>
+          </div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-icon amount">
+            <i class="el-icon-money"></i>
+          </div>
+          <div class="stat-text">
+            <p class="stat-label">当前页金额</p>
+            <p class="stat-value">￥{{ formatPrice(currentPageAmount) }}</p>
+          </div>
+        </article>
+      </section>
 
-      <el-table-column label="总金额" width="100">
-        <template slot-scope="{ row }">
-          ￥{{ formatPrice(row.totalFee) }}
-        </template>
-      </el-table-column>
+      <section class="table-panel">
+        <div class="panel-head">
+          <div>
+            <h2>订单列表</h2>
+            <p>共 {{ total }} 条历史订单记录</p>
+          </div>
+        </div>
 
-      <el-table-column label="剩余支付时间" width="160">
-        <template slot-scope="{ row }">
-          <span v-if="showCountdown(row)" class="countdown">{{
-            countdownText(row)
-          }}</span>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
+        <el-table
+          :data="orders"
+          border
+          style="width: 100%"
+          class="order-table"
+          v-loading="loading"
+          empty-text="暂无订单记录"
+        >
+          <el-table-column
+            prop="id"
+            label="订单号"
+            min-width="220"
+            show-overflow-tooltip
+          ></el-table-column>
 
-      <el-table-column label="创建时间" width="160">
-        <template slot-scope="{ row }">
-          {{ formatDate(row.createTime) }}
-        </template>
-      </el-table-column>
+          <el-table-column label="总金额" width="120">
+            <template slot-scope="{ row }">
+              <span class="amount-text">￥{{ formatPrice(row.totalFee) }}</span>
+            </template>
+          </el-table-column>
 
-      <el-table-column label="付款方式" width="120">
-        <template slot-scope="{ row }">
-          {{ paymentTypeText(row.paymentType) }}
-        </template>
-      </el-table-column>
+          <el-table-column label="剩余支付时间" width="170">
+            <template slot-scope="{ row }">
+              <span v-if="showCountdown(row)" class="countdown">
+                {{ countdownText(row) }}
+              </span>
+              <span v-else class="countdown-empty">-</span>
+            </template>
+          </el-table-column>
 
-      <el-table-column label="状态" width="160">
-        <template slot-scope="{ row }">
-          <el-tag :type="statusTagType(row.status)">
-            {{ statusText(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
+          <el-table-column label="创建时间" min-width="180">
+            <template slot-scope="{ row }">
+              {{ formatDate(row.createTime) }}
+            </template>
+          </el-table-column>
 
-      <el-table-column label="操作" fixed="right">
-        <template slot-scope="{ row }">
-          <el-button size="small" @click="viewOrderDetail(row)"
-            >查看详情</el-button
-          >
-          <el-button
-            v-if="showCountdown(row)"
-            size="small"
-            type="danger"
-            @click="payNow(row)"
-            >去支付</el-button
-          >
-        </template>
-      </el-table-column>
-    </el-table>
+          <el-table-column label="付款方式" width="120">
+            <template slot-scope="{ row }">
+              {{ paymentTypeText(row.paymentType) }}
+            </template>
+          </el-table-column>
 
-    <!-- 分页 -->
-    <div class="pagination">
-      <el-pagination
-        background
-        layout="prev, pager, next"
-        :total="total"
-        :current-page.sync="currentPage"
-        :page-size="pageSize"
-        @current-change="handlePageChange"
-      ></el-pagination>
-    </div>
+          <el-table-column label="状态" width="190">
+            <template slot-scope="{ row }">
+              <span class="status-wrap" :class="`status-${row.status}`">
+                <span class="status-dot"></span>
+                <el-tag :type="statusTagType(row.status)" effect="plain">
+                  {{ statusText(row.status) }}
+                </el-tag>
+              </span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" fixed="right" min-width="170">
+            <template slot-scope="{ row }">
+              <div class="action-group">
+                <el-button size="mini" plain @click="viewOrderDetail(row)">
+                  查看详情
+                </el-button>
+                <el-button
+                  v-if="showCountdown(row)"
+                  size="mini"
+                  type="danger"
+                  :loading="creatingPayOrderId === row.id"
+                  :disabled="
+                    creatingPayOrderId && creatingPayOrderId !== row.id
+                  "
+                  @click="payNow(row)"
+                >
+                  去支付
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination" v-if="total">
+          <el-pagination
+            background
+            layout="prev, pager, next"
+            :total="total"
+            :current-page.sync="currentPage"
+            :page-size="pageSize"
+            @current-change="handlePageChange"
+          ></el-pagination>
+        </div>
+      </section>
+
     <el-dialog
       title="订单详情"
       :visible.sync="detailVisible"
       width="700px"
+      custom-class="order-detail-dialog"
       append-to-body
     >
       <div v-loading="detailLoading">
-        <el-table :data="orderDetails" border>
+        <el-table :data="orderDetails" border class="detail-table">
           <el-table-column label="商品" min-width="360">
             <template slot-scope="{ row }">
               <div class="item-cell">
@@ -110,6 +188,7 @@
         <el-button @click="detailVisible = false">关闭</el-button>
       </span>
     </el-dialog>
+    </div>
   </div>
 </template>
 
@@ -131,80 +210,25 @@ export default {
       detailVisible: false,
       detailLoading: false,
       orderDetails: [],
-      creatingPayOrderId: null,
-      mockData: {
-        code: 1,
-        msg: null,
-        data: {
-          total: 4,
-          list: [
-            {
-              id: '1916329860519956480',
-              totalFee: 13400,
-              paymentType: 1,
-              userId: '1916329766085201920',
-              status: 1,
-              itemId: '33167574964',
-              addressId: '1',
-              count: 1,
-              createTime: '2025-04-27 11:13:37',
-              payTime: null,
-              endTime: null,
-              closeTime: null,
-              updateTime: '2025-04-27 11:13:37'
-            },
-            {
-              id: '1919721764024487936',
-              totalFee: 28900,
-              paymentType: 1,
-              userId: '1916329766085201920',
-              status: 1,
-              itemId: '317578',
-              addressId: '1',
-              count: 1,
-              createTime: '2025-05-06 19:51:50',
-              payTime: null,
-              endTime: null,
-              closeTime: null,
-              updateTime: '2025-05-06 19:51:50'
-            },
-            {
-              id: '1919746454126333952',
-              totalFee: 27500,
-              paymentType: 1,
-              userId: '1916329766085201920',
-              status: 1,
-              itemId: '546872',
-              addressId: '1',
-              count: 1,
-              createTime: '2025-05-06 21:29:56',
-              payTime: null,
-              endTime: null,
-              closeTime: null,
-              updateTime: '2025-05-06 21:29:57'
-            },
-            {
-              id: '1919749019735953408',
-              totalFee: 71300,
-              paymentType: 2,
-              userId: '1916329766085201920',
-              status: 1,
-              itemId: '577967',
-              addressId: '1',
-              count: 1,
-              createTime: '2025-05-06 21:40:08',
-              payTime: null,
-              endTime: null,
-              closeTime: null,
-              updateTime: '2025-05-06 21:40:08'
-            }
-          ]
-        }
-      }
+      creatingPayOrderId: null
     }
   },
   computed: {
-    ...mapGetters('user', ['getSessionId', 'getToken', 'getUser'])
+    ...mapGetters('user', ['getSessionId', 'getToken', 'getUser']),
+    pendingCount () {
+      return this.orders.filter(item => Number(item.status) === 1).length
+    },
+    completedCount () {
+      return this.orders.filter(item =>
+        [4, 6].includes(Number(item.status))
+      ).length
+    },
+    currentPageAmount () {
+      return this.orders.reduce(
+        (sum, item) => sum + Number(item.totalFee || 0),
+        0
+      )
+    }
   },
   mounted () {
     this.fetchOrders(this.currentPage)
@@ -214,20 +238,22 @@ export default {
     this.destroyTimer()
   },
   methods: {
-    fetchOrders () {
+    fetchOrders (page = this.currentPage) {
       this.loading = true
-      let userId = this.getUser.id
-      console.log(userId)
-      getOrder(this.currentPage, this.pageSize).then(res => {
-        this.orders = res.list
-        this.total = Number(res.total) || 0
-        this.loading = false
-      })
-      // setTimeout(() => {
-      //   this.orders = this.mockData.data.list
-      //   this.total = this.mockData.data.total
-      //   this.loading = false
-      // }, 500)
+      this.currentPage = page
+      getOrder(this.currentPage, this.pageSize)
+        .then(res => {
+          this.orders = Array.isArray(res.list) ? res.list : []
+          this.total = Number(res.total) || 0
+        })
+        .catch(() => {
+          this.orders = []
+          this.total = 0
+          this.$message.error('加载订单失败，请稍后重试')
+        })
+        .finally(() => {
+          this.loading = false
+        })
     },
 
     handlePageChange (page) {
@@ -236,7 +262,7 @@ export default {
     },
 
     formatPrice (price) {
-      return (price / 100).toFixed(2)
+      return (Number(price || 0) / 100).toFixed(2)
     },
 
     formatDate (timeStr) {
@@ -359,46 +385,332 @@ export default {
 </script>
 
 <style scoped>
-.order-list-container {
-  padding: 20px;
-  max-width: 1200px;
+.order-page {
+  --primary: #eb5757;
+  --text-main: #1f2937;
+  --text-sub: #6b7280;
+  --border-color: #e7ecf3;
+  --card-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  min-height: 100vh;
+  padding: 24px 0 40px;
+  color: var(--text-main);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  background: radial-gradient(
+      circle at 10% 10%,
+      rgba(255, 215, 188, 0.32),
+      transparent 34%
+    ),
+    radial-gradient(circle at 92% 0, rgba(255, 246, 216, 0.45), transparent 38%),
+    #f6f8fb;
+}
+
+.container {
+  width: min(1400px, calc(100% - 32px));
   margin: 0 auto;
 }
 
-.header-actions {
+.hero-card {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+  border-radius: 20px;
+  padding: 28px 30px;
+  background: linear-gradient(135deg, #ffffff 0%, #fff9f4 100%);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+}
+
+.hero-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ef6f6f;
+}
+
+.hero-text h1 {
+  margin: 6px 0 8px;
+  font-size: 34px;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.hero-desc {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.hero-actions ::v-deep .el-button {
+  border-radius: 12px;
+  border-color: #d8e1ee;
+  color: #334155;
+  font-weight: 600;
+}
+
+.stats-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #fff3ef;
+  color: #e25656;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.stat-icon.pending {
+  background: #fff8e8;
+  color: #d88227;
+}
+
+.stat-icon.success {
+  background: #ecfbf3;
+  color: #1fa765;
+}
+
+.stat-icon.amount {
+  background: #eef6ff;
+  color: #3b82f6;
+}
+
+.stat-text {
+  min-width: 0;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.stat-value {
+  margin: 5px 0 0;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.table-panel {
+  margin-top: 16px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  padding: 18px 18px 16px;
+}
+
+.panel-head {
+  margin-bottom: 14px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.panel-head p {
+  margin: 6px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.order-table ::v-deep .el-table__header-wrapper th {
+  background: #f8fafd;
+  color: #475569;
+  font-weight: 600;
+}
+
+.order-table ::v-deep .el-table td,
+.order-table ::v-deep .el-table th.is-leaf {
+  border-bottom: 1px solid #edf1f7;
+}
+
+.order-table ::v-deep .el-table__body tr:hover > td {
+  background: #fffaf8;
+}
+
+.amount-text {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #d64545;
+  background: #fff1f0;
+  border: 1px solid #ffd4d0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown-empty {
+  color: #94a3b8;
+}
+
+.status-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.status-2 .status-dot,
+.status-4 .status-dot,
+.status-6 .status-dot {
+  background: #22c55e;
+}
+
+.status-3 .status-dot {
+  background: #409eff;
+}
+
+.status-5 .status-dot {
+  background: #f56c6c;
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-group ::v-deep .el-button {
+  margin-left: 0;
+  border-radius: 10px;
 }
 
 .pagination {
-  margin-top: 20px;
+  margin-top: 18px;
   text-align: center;
+  border-top: 1px solid #eff3f8;
+  padding-top: 14px;
 }
-.countdown {
-  color: #ff4d4f;
-  font-weight: 600;
+
+.pagination ::v-deep .el-pager li {
+  border-radius: 8px;
 }
+
 .item-cell {
   display: flex;
   gap: 12px;
   align-items: center;
 }
+
 .item-thumb {
-  width: 60px;
-  height: 60px;
+  width: 62px;
+  height: 62px;
   object-fit: contain;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  background: #fafafa;
+  border: 1px solid #e6ecf3;
+  border-radius: 8px;
+  background: #f8fafc;
 }
+
+.item-info {
+  min-width: 0;
+}
+
 .item-title {
   font-size: 14px;
-  color: #333;
+  color: #334155;
+  line-height: 1.5;
 }
+
 .item-spec {
   font-size: 12px;
-  color: #888;
+  color: #94a3b8;
+}
+
+::v-deep .order-detail-dialog {
+  border-radius: 14px;
+}
+
+::v-deep .order-detail-dialog .el-dialog__header {
+  border-bottom: 1px solid #edf2f7;
+}
+
+::v-deep .detail-table .el-table__header-wrapper th {
+  background: #f8fafd;
+  color: #475569;
+}
+
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .container {
+    width: calc(100% - 24px);
+  }
+
+  .hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 22px 20px;
+  }
+
+  .hero-text h1 {
+    font-size: 30px;
+  }
+
+  .table-panel {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .order-page {
+    padding: 16px 0 26px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-text h1 {
+    font-size: 28px;
+  }
+
+  .panel-head h2 {
+    font-size: 22px;
+  }
 }
 </style>
