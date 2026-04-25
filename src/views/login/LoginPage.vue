@@ -195,12 +195,15 @@ export default {
 
     async handleSubmit () {
       if (!this.$refs.form) return
+      if (this.submitting) return
 
       try {
-        const valid = await this.$refs.form.validate().catch(() => false)
-        if (!valid) return
-
         this.submitting = true
+        const valid = await this.$refs.form.validate().catch(() => false)
+        if (!valid) {
+          this.submitting = false
+          return
+        }
 
         const payload = {
           ...this.formModel,
@@ -219,7 +222,13 @@ export default {
         const res = await login(payload)
         this.setUser(res)
         this.$message.success('登录成功')
-        this.$router.push('/')
+        if (this.$route.path !== '/') {
+          await this.$router.push('/').catch(err => {
+            if (!err || err.name !== 'NavigationDuplicated') {
+              throw err
+            }
+          })
+        }
       } catch (err) {
         const fallbackMessage = this.isRegister
           ? '注册失败，请稍后重试'
