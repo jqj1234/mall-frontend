@@ -149,45 +149,45 @@
         </div>
       </section>
 
-    <el-dialog
-      title="订单详情"
-      :visible.sync="detailVisible"
-      width="700px"
-      custom-class="order-detail-dialog"
-      append-to-body
-    >
-      <div v-loading="detailLoading">
-        <el-table :data="orderDetails" border class="detail-table">
-          <el-table-column label="商品" min-width="360">
-            <template slot-scope="{ row }">
-              <div class="item-cell">
-                <img :src="row.image" class="item-thumb" />
-                <div class="item-info">
-                  <div class="item-title">{{ row.name }}</div>
-                  <div class="item-spec" v-if="row.spec">
-                    {{ renderSpec(row.spec) }}
+      <el-dialog
+        title="订单详情"
+        :visible.sync="detailVisible"
+        width="700px"
+        custom-class="order-detail-dialog"
+        append-to-body
+      >
+        <div v-loading="detailLoading">
+          <el-table :data="orderDetails" border class="detail-table">
+            <el-table-column label="商品" min-width="360">
+              <template slot-scope="{ row }">
+                <div class="item-cell">
+                  <img :src="row.image" class="item-thumb" />
+                  <div class="item-info">
+                    <div class="item-title">{{ row.name }}</div>
+                    <div class="item-spec" v-if="row.spec">
+                      {{ renderSpec(row.spec) }}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="num" label="数量" width="100" align="center" />
-          <el-table-column label="单价" width="120" align="center">
-            <template slot-scope="{ row }"
-              >￥{{ formatPrice(row.price) }}</template
-            >
-          </el-table-column>
-          <el-table-column label="小计" width="120" align="center">
-            <template slot-scope="{ row }"
-              >￥{{ formatPrice(row.price * (row.num || 0)) }}</template
-            >
-          </el-table-column>
-        </el-table>
-      </div>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="detailVisible = false">关闭</el-button>
-      </span>
-    </el-dialog>
+              </template>
+            </el-table-column>
+            <el-table-column prop="num" label="数量" width="100" align="center" />
+            <el-table-column label="单价" width="120" align="center">
+              <template slot-scope="{ row }"
+                >￥{{ formatPrice(row.price) }}</template
+              >
+            </el-table-column>
+            <el-table-column label="小计" width="120" align="center">
+              <template slot-scope="{ row }"
+                >￥{{ formatPrice(row.price * (row.num || 0)) }}</template
+              >
+            </el-table-column>
+          </el-table>
+        </div>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="detailVisible = false">关闭</el-button>
+        </span>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -339,8 +339,9 @@ export default {
       }
     },
     showCountdown (row) {
-      if (!row || row.status !== 1 || !row.autoCloseTime) return false
+      if (!row || Number(row.status) !== 1 || !row.autoCloseTime) return false
       const end = new Date(row.autoCloseTime).getTime()
+      if (Number.isNaN(end)) return false
       return end - this.nowTs > 0
     },
     countdownText (row) {

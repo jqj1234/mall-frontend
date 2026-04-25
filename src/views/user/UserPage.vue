@@ -1,120 +1,148 @@
 <template>
-  <div class="user-page container">
-    <div class="header-bar">
-      <h2>个人中心</h2>
-      <el-button type="text" @click="$router.push('/')">返回首页</el-button>
-    </div>
-    <el-card v-loading="loading">
-      <div class="profile">
-        <div class="avatar-box">
-          <el-upload
-            ref="avatarUploader"
-            class="upload-box"
-            drag
-            :show-file-list="false"
-            :http-request="handleAvatarUpload"
-            :before-upload="beforeAvatarUpload"
-            :action="dummyAction"
+  <div class="user-page">
+    <header class="header">
+      <div class="container header-inner">
+        <div class="brand-wrap" @click="$router.push('/')">
+          <div class="brand">阳光商城</div>
+          <p class="brand-subtitle">个人中心 · 资料与地址管理</p>
+        </div>
+        <div class="header-actions">
+          <el-button type="text" @click="$router.push('/')">返回首页</el-button>
+          <el-button type="text" @click="$router.push('/orderlist')"
+            >历史订单</el-button
           >
-            <template v-if="avatarPreview">
-              <img class="upload-preview" :src="avatarPreview" />
-              <div class="upload-overlay">点击此处更换头像</div>
-            </template>
-            <template v-else>
-              <img :src="defaultAvatar" class="upload-preview" />
-              <div class="upload-overlay">点击上传头像</div>
-            </template>
-          </el-upload>
-          <div class="avatar-actions">
+        </div>
+      </div>
+    </header>
+
+    <section class="container main-content">
+      <el-card class="panel-card profile-card" v-loading="loading">
+        <div class="section-head">
+          <div>
+            <h3>账户资料</h3>
+            <p>更新联系方式和头像，确保系统资料实时可用。</p>
+          </div>
+        </div>
+        <div class="profile-main">
+          <div class="avatar-column">
+            <div class="avatar-box">
+              <el-upload
+                ref="avatarUploader"
+                class="upload-box"
+                drag
+                :show-file-list="false"
+                :http-request="handleAvatarUpload"
+                :before-upload="beforeAvatarUpload"
+                :action="dummyAction"
+              >
+                <template v-if="avatarPreview">
+                  <img class="upload-preview" :src="avatarPreview" />
+                  <div class="upload-overlay">点击更换头像</div>
+                </template>
+                <template v-else>
+                  <img :src="defaultAvatar" class="upload-preview" />
+                  <div class="upload-overlay">点击上传头像</div>
+                </template>
+              </el-upload>
+            </div>
             <el-button
               type="text"
               size="mini"
+              class="clear-avatar-btn"
               @click="clearAvatar"
               :disabled="avatarUploading"
-              >清空</el-button
+              >清空头像</el-button
             >
           </div>
-        </div>
-        <div class="info-form">
-          <el-form :model="form" label-width="100px">
-            <el-form-item label="用户名">
-              <!-- <el-input v-model="form.username" maxlength="20"/> -->
-              <span>{{ formatDate(user.username) }}</span>
-            </el-form-item>
-            <el-form-item label="手机号"
-              ><el-input v-model="form.phone" maxlength="11"
-            /></el-form-item>
-            <el-form-item label="账户余额">
-              <div class="balance-row">
-                <span class="money">￥{{ formatMoney(user.balance) }}</span>
-                <el-button size="mini" type="danger" plain @click="openRecharge"
-                  >充值</el-button
-                >
-              </div>
-            </el-form-item>
 
-            <el-form-item label="注册时间"
-              ><span>{{ formatDate(user.createTime) }}</span></el-form-item
-            >
-            <el-form-item label="更新时间"
-              ><span>{{ formatDate(user.updateTime) }}</span></el-form-item
-            >
-            <el-form-item style="text-align: center">
-              <el-button type="primary" :loading="saving" @click="saveUser"
-                >保存修改</el-button
-              >
-            </el-form-item>
-          </el-form>
+          <div class="info-form">
+            <el-form :model="form" label-width="100px">
+              <el-form-item label="用户名">
+                <span class="readonly-text">{{ form.username || '-' }}</span>
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="form.phone" maxlength="11" />
+              </el-form-item>
+              <el-form-item label="账户余额">
+                <div class="balance-row">
+                  <span class="money">￥{{ formatMoney(user.balance) }}</span>
+                  <el-button
+                    size="mini"
+                    type="danger"
+                    plain
+                    @click="openRecharge"
+                    >充值</el-button
+                  >
+                </div>
+              </el-form-item>
+              <el-form-item label="注册时间">
+                <span class="readonly-text">{{ formatDate(user.createTime) }}</span>
+              </el-form-item>
+              <el-form-item label="更新时间">
+                <span class="readonly-text">{{ formatDate(user.updateTime) }}</span>
+              </el-form-item>
+              <el-form-item class="form-actions" label=" ">
+                <el-button type="primary" :loading="saving" @click="saveUser"
+                  >保存修改</el-button
+                >
+              </el-form-item>
+            </el-form>
+          </div>
         </div>
-      </div>
-    </el-card>
-    <el-card class="addresses-card">
-      <div class="addr-header">
-        <h3>我的地址</h3>
-        <el-button type="primary" size="small" @click="openAddAddress"
-          >新增地址</el-button
+      </el-card>
+
+      <el-card class="panel-card addresses-card">
+        <div class="section-head">
+          <div>
+            <h3>我的地址</h3>
+            <p>维护常用收货地址，结算时可以快速选择。</p>
+          </div>
+          <el-button type="primary" size="small" @click="openAddAddress"
+            >新增地址</el-button
+          >
+        </div>
+        <el-table
+          v-if="addresses && addresses.length"
+          :data="addresses"
+          stripe
+          class="addr-table"
         >
-      </div>
-      <el-table
-        v-if="addresses && addresses.length"
-        :data="addresses"
-        stripe
-        style="width: 100%"
-      >
-        <el-table-column prop="contact" label="联系人" width="120" />
-        <el-table-column prop="mobile" label="手机号" width="120" />
-        <el-table-column label="地区" min-width="220">
-          <template slot-scope="scope">
-            {{ scope.row.province }} {{ scope.row.city }} {{ scope.row.town }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="street" label="详细地址" min-width="240" />
-        <el-table-column label="默认" width="80">
-          <template slot-scope="scope">
-            <el-tag
-              size="small"
-              :type="scope.row.isDefault === 1 ? 'success' : 'info'"
-              >{{ scope.row.isDefault === 1 ? '是' : '否' }}</el-tag
-            >
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160">
-          <template slot-scope="scope">
-            <el-button type="text" size="small" @click="editAddress(scope.row)"
-              >修改</el-button
-            >
-            <el-button
-              type="text"
-              size="small"
-              style="color: #ff4d4f"
-              @click="removeAddress(scope.row)"
-              >删除</el-button
-            >
-          </template>
-        </el-table-column>
-      </el-table>
-      <div v-else class="addr-empty">暂无地址</div>
-    </el-card>
+          <el-table-column prop="contact" label="联系人" width="120" />
+          <el-table-column prop="mobile" label="手机号" width="120" />
+          <el-table-column label="地区" min-width="220">
+            <template slot-scope="scope">
+              {{ scope.row.province }} {{ scope.row.city }} {{ scope.row.town }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="street" label="详细地址" min-width="240" />
+          <el-table-column label="默认" width="80">
+            <template slot-scope="scope">
+              <el-tag
+                size="small"
+                :type="scope.row.isDefault === 1 ? 'success' : 'info'"
+                >{{ scope.row.isDefault === 1 ? '是' : '否' }}</el-tag
+              >
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160">
+            <template slot-scope="scope">
+              <el-button type="text" size="small" @click="editAddress(scope.row)"
+                >修改</el-button
+              >
+              <el-button
+                type="text"
+                size="small"
+                class="delete-btn"
+                @click="removeAddress(scope.row)"
+                >删除</el-button
+              >
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-else class="addr-empty">暂无地址，点击右上角新增地址开始使用。</div>
+      </el-card>
+    </section>
+
     <el-dialog
       title="新增地址"
       :visible.sync="addrDialogVisible"
@@ -309,14 +337,6 @@ export default {
       if (!cents && cents !== 0) return '0.00'
       return (cents / 100).toFixed(2)
     },
-    statusText (s) {
-      const map = { 1: '正常', 2: '冻结' }
-      return map[s] || '-'
-    },
-    statusTagType (s) {
-      const map = { 1: 'success', 2: 'warning' }
-      return map[s] || 'info'
-    },
     openRecharge () {
       this.rechargeVisible = true
     },
@@ -391,129 +411,356 @@ export default {
 
 <style scoped>
 .user-page {
-  padding: 20px;
+  --primary: #eb5757;
+  --primary-deep: #cc4242;
+  --text-main: #1f2937;
+  --text-sub: #6b7280;
+  --border-color: #e7ecf3;
+  --card-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  min-height: 100vh;
+  color: var(--text-main);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  background: radial-gradient(
+      circle at 10% 10%,
+      rgba(255, 215, 188, 0.32),
+      transparent 34%
+    ),
+    radial-gradient(circle at 92% 0, rgba(255, 246, 216, 0.45), transparent 38%),
+    #f6f8fb;
 }
-.header-bar {
+
+.container {
+  width: min(1400px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.84);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.header-inner {
+  min-height: 72px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 16px;
 }
-.profile {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 28px;
-  align-items: start;
+
+.brand-wrap {
+  cursor: pointer;
+  user-select: none;
 }
-.avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #eee;
-  background: #fafafa;
+
+.brand {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 1px;
 }
-.info {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  row-gap: 10px;
-  column-gap: 8px;
+
+.brand-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-sub);
+  letter-spacing: 1.5px;
+}
+
+.header-actions {
+  display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 12px;
 }
-.label {
-  color: #666;
+
+.header-actions ::v-deep .el-button--text {
+  color: #4b5563;
+  padding: 0;
 }
+
+.header-actions ::v-deep .el-button--text:hover {
+  color: var(--primary);
+}
+
 .money {
-  color: #ff4d4f;
-  font-weight: 600;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1;
 }
-.user-page {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-.avatar-box {
+
+.main-content {
+  padding: 24px 0 42px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
+}
+
+.panel-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.panel-card ::v-deep .el-card__body {
+  padding: 22px 24px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  width: 200px;
-  overflow: hidden;
+  gap: 12px 16px;
+  margin-bottom: 16px;
 }
-.avatar-actions {
-  width: 160px;
-  text-align: center;
-  display: none;
+
+.section-head h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
 }
+
+.section-head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.section-head ::v-deep .el-button {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.profile-main {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.avatar-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-box {
+  width: 168px;
+}
+
+.balance-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.balance-row .money {
+  font-size: 26px;
+}
+
+.balance-row ::v-deep .el-button {
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+}
+
 .upload-box {
-  width: 160px !important;
-  display: inline-block;
+  width: 168px !important;
+  display: block;
 }
+
+.upload-box ::v-deep .el-upload {
+  width: 168px;
+  display: block;
+}
+
 .upload-box ::v-deep .el-upload-dragger {
-  width: 160px !important;
-  height: 160px !important;
+  width: 168px !important;
+  height: 168px !important;
   position: relative;
   border-radius: 50%;
   overflow: hidden;
+  border: 1px dashed #d7deea;
+  background: #f8fafc;
 }
+
+.upload-box ::v-deep .el-upload-dragger:hover {
+  border-color: #ffb7aa;
+}
+
 .upload-preview {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
+
 .upload-overlay {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.4);
+  height: 30px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.46));
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  width: 160px;
+  font-size: 11px;
 }
+
+.clear-avatar-btn {
+  color: #64748b;
+}
+
+.clear-avatar-btn:hover {
+  color: var(--primary);
+}
+
 .info-form {
-  flex: 1;
-  width: 100%;
+  max-width: 620px;
 }
-.info-form .el-form-item {
+
+.info-form ::v-deep .el-form-item {
   margin-bottom: 18px;
 }
-.money {
-  color: #ff4d4f;
+
+.info-form ::v-deep .el-form-item__label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.info-form ::v-deep .el-input__inner {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #dde5f0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.info-form ::v-deep .el-input__inner:focus {
+  border-color: #ff9f8a;
+  box-shadow: 0 0 0 4px rgba(245, 120, 90, 0.15);
+}
+
+.readonly-text {
+  color: #1f2937;
+}
+
+.form-actions {
+  margin-top: 2px;
+}
+
+.form-actions ::v-deep .el-button {
+  min-width: 120px;
+  height: 40px;
+  border-radius: 10px;
   font-weight: 600;
 }
-.balance-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
+
+.addr-table {
+  width: 100%;
 }
-.user-page :deep(.el-card__body) {
-  padding: 22px 26px;
+
+.addr-table ::v-deep .el-table__header th.el-table__cell {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
 }
-.info-form {
-  padding-top: 4px;
-  max-width: 520px;
+
+.addr-table ::v-deep td.el-table__cell {
+  border-bottom: 1px solid #edf2f8;
 }
+
+.addr-table ::v-deep .el-button--text {
+  padding: 0;
+}
+
+.addr-table ::v-deep .el-tag {
+  border-radius: 12px;
+}
+
+.delete-btn {
+  color: #ff4d4f !important;
+}
+
+.addr-empty {
+  border-radius: 12px;
+  border: 1px dashed #dbe3ef;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+  padding: 32px 12px;
+}
+
 .recharge-tip {
   text-align: center;
   padding: 12px 0;
+  color: #334155;
+  line-height: 1.8;
 }
-.addresses-card {
-  margin-top: 16px;
+
+::v-deep .el-dialog {
+  border-radius: 14px;
 }
-.addr-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+
+::v-deep .el-dialog__header {
+  border-bottom: 1px solid #eef2f7;
 }
-.addr-empty {
-  color: #999;
-  text-align: center;
-  padding: 24px 0;
+
+@media (max-width: 1024px) {
+  .header {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: calc(100% - 24px);
+  }
+
+  .header-inner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 0;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-main {
+    grid-template-columns: 1fr;
+  }
+
+  .avatar-column {
+    align-items: flex-start;
+  }
+
+  .money {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 560px) {
+  .brand-subtitle {
+    display: none;
+  }
+
+  .panel-card ::v-deep .el-card__body {
+    padding: 18px 16px;
+  }
+
+  .balance-row .money {
+    font-size: 22px;
+  }
 }
 </style>
