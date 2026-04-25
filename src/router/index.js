@@ -9,6 +9,7 @@ import PayPage from '@/views/pay/PayPage.vue'
 import UserPage from '@/views/user/UserPage.vue'
 import SeckillPage from '@/views/seckill/SeckillPage.vue'
 import SeckillDetail from '@/views/seckill/SeckillDetail.vue'
+import ItemManagePage from '@/views/admin/ItemManagePage.vue'
 Vue.use(VueRouter)
 
 // 创建路由对象
@@ -46,6 +47,10 @@ const router = new VueRouter({
     {
       path: '/user',
       component: UserPage
+    },
+    {
+      path: '/admin/items',
+      component: ItemManagePage
     }
   ]
 })
