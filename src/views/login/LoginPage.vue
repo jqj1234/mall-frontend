@@ -22,7 +22,7 @@
           </div>
           <div class="feature-item">
             <i class="el-icon-shopping-cart-full"></i>
-            <span>购物车与订单全流程体验</span>
+            <span>AI导购推荐流程体验</span>
           </div>
         </div>
 
@@ -35,7 +35,13 @@
         <div class="form-shell">
           <div class="form-header">
             <h2>{{ isRegister ? '创建账号' : '欢迎登录' }}</h2>
-            <p>{{ isRegister ? '注册后即可开始购物体验' : '登录后可查看订单与购物车' }}</p>
+            <p>
+              {{
+                isRegister
+                  ? '注册后即可开始购物体验'
+                  : '登录后可查看订单与购物车'
+              }}
+            </p>
           </div>
 
           <el-form
@@ -268,7 +274,11 @@ export default {
   padding: 24px 0;
   color: var(--text-main);
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
-  background: radial-gradient(circle at 10% 10%, rgba(255, 215, 188, 0.32), transparent 34%),
+  background: radial-gradient(
+      circle at 10% 10%,
+      rgba(255, 215, 188, 0.32),
+      transparent 34%
+    ),
     radial-gradient(circle at 92% 0, rgba(255, 246, 216, 0.45), transparent 38%),
     #f6f8fb;
 }

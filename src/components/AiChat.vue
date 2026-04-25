@@ -47,15 +47,15 @@
               <div
                 v-if="msg.content || msg.imageUrl"
                 class="text-content"
-                :class="{ 'markdown-body': msg.role === 'assistant' }"
+                :class="{ 'markdown-body': msg.role === 'assistant' && !msg.streaming }"
               >
                 <div v-if="msg.imageUrl" class="image-content">
                   <img :src="msg.imageUrl" alt="上传的图片" />
                 </div>
-                <div
-                  v-if="msg.role === 'assistant' && msg.content"
-                  v-html="renderMarkdown(msg.content)"
-                ></div>
+                <template v-if="msg.role === 'assistant' && msg.content">
+                  <div v-if="msg.streaming" class="stream-content">{{ msg.content }}</div>
+                  <div v-else v-html="renderMarkdown(msg.content)"></div>
+                </template>
                 <template v-else-if="msg.content">{{ msg.content }}</template>
               </div>
 
@@ -76,22 +76,32 @@
                 class="products-container"
               >
                 <div
-                  v-for="product in msg.products"
-                  :key="product.id"
+                  v-for="(product, productIndex) in getVisibleProducts(msg)"
+                  :key="resolveProductId(product) || `${index}-${productIndex}`"
                   class="product-card"
-                  @click="goToProduct(product.id)"
+                  @click="goToProduct(resolveProductId(product))"
                 >
                   <img
-                    :src="product.image || product.pic"
+                    :src="product.image || product.pic || product.imageUrl || product.img"
                     alt="商品图片"
                     class="product-img"
                   />
                   <div class="product-info">
-                    <div class="product-name" v-html="product.name"></div>
+                    <div
+                      class="product-name"
+                      v-html="product.name || product.title || product.productName || product.itemName || '商品'"
+                    ></div>
                     <div class="product-price">
-                      ¥{{ ((product.price || 0) / 100).toFixed(2) }}
+                      ¥{{ formatProductPrice(product) }}
                     </div>
                   </div>
+                </div>
+                <div
+                  v-if="shouldShowProductsToggle(msg)"
+                  class="products-toggle"
+                  @click.stop="toggleProductsExpand(msg)"
+                >
+                  {{ msg.productsExpanded ? '收起商品列表' : '点击查看全部' }}
                 </div>
               </div>
             </div>
@@ -152,6 +162,7 @@
 <script>
 import MarkdownIt from 'markdown-it'
 import { uploadImage } from '@/api/item'
+import { streamChat } from '@/api/ai-chat'
 
 const md = new MarkdownIt({
   breaks: true,
@@ -166,8 +177,7 @@ export default {
       inputText: '',
       isLoading: false,
       pendingImage: null,
-      typingQueue: '',
-      typingTimer: null,
+      streamRenderTimer: null,
       messages: [
         {
           role: 'assistant',
@@ -178,9 +188,9 @@ export default {
     }
   },
   beforeDestroy () {
-    if (this.typingTimer) {
-      clearInterval(this.typingTimer)
-      this.typingTimer = null
+    if (this.streamRenderTimer) {
+      clearInterval(this.streamRenderTimer)
+      this.streamRenderTimer = null
     }
   },
   methods: {
@@ -206,6 +216,131 @@ export default {
       if (id) {
         this.$router.push(`/product/${id}`)
       }
+    },
+    resolveProductId (product) {
+      if (!product || typeof product !== 'object') return ''
+      return (
+        product.id ||
+        product.itemId ||
+        product.productId ||
+        product.goodsId ||
+        product.spuId ||
+        ''
+      )
+    },
+    extractProductsPayload (eventData) {
+      if (!eventData || typeof eventData !== 'object') return []
+
+      const normalizeToArray = payload => {
+        if (!payload) return []
+        if (Array.isArray(payload)) return payload
+
+        if (typeof payload === 'string') {
+          try {
+            return normalizeToArray(JSON.parse(payload))
+          } catch (error) {
+            return []
+          }
+        }
+
+        if (typeof payload === 'object') {
+          if (Array.isArray(payload.list)) return payload.list
+          if (Array.isArray(payload.items)) return payload.items
+          if (Array.isArray(payload.products)) return payload.products
+          if (Array.isArray(payload.data)) return payload.data
+        }
+        return []
+      }
+
+      const candidates = [
+        eventData.data,
+        eventData.products,
+        eventData.list,
+        eventData.items
+      ]
+
+      for (const candidate of candidates) {
+        const list = normalizeToArray(candidate)
+        if (list.length > 0) {
+          return list
+        }
+      }
+
+      return []
+    },
+    normalizeProducts (rawList) {
+      if (!Array.isArray(rawList)) return []
+
+      return rawList
+        .filter(item => item && typeof item === 'object')
+        .map((item, idx) => ({
+          ...item,
+          id:
+            item.id ||
+            item.itemId ||
+            item.productId ||
+            item.goodsId ||
+            item.spuId ||
+            `chat-product-${Date.now()}-${idx}`,
+          name:
+            item.name ||
+            item.title ||
+            item.productName ||
+            item.itemName ||
+            '商品',
+          image: item.image || item.pic || item.imageUrl || item.img || '',
+          price:
+            item.price != null
+              ? item.price
+              : item.newPrice != null
+              ? item.newPrice
+              : item.amount != null
+              ? item.amount
+              : 0
+        }))
+    },
+    formatProductPrice (product) {
+      if (!product || typeof product !== 'object') return '0.00'
+
+      const rawPrice =
+        product.price != null
+          ? product.price
+          : product.newPrice != null
+          ? product.newPrice
+          : product.amount != null
+          ? product.amount
+          : 0
+      const num = Number(rawPrice)
+      if (!Number.isFinite(num) || num < 0) return '0.00'
+
+      // 项目内商品价格默认是分；当后端返回小数时按元兜底处理
+      if (!Number.isInteger(num)) {
+        return num.toFixed(2)
+      }
+
+      return (num / 100).toFixed(2)
+    },
+    getVisibleProducts (msg) {
+      const products = (msg && Array.isArray(msg.products)) ? msg.products : []
+      if (products.length <= 2 || msg.productsExpanded) {
+        return products
+      }
+      return products.slice(0, 2)
+    },
+    shouldShowProductsToggle (msg) {
+      const products = (msg && Array.isArray(msg.products)) ? msg.products : []
+      return products.length > 2
+    },
+    toggleProductsExpand (msg) {
+      if (!msg || !Array.isArray(msg.products) || msg.products.length <= 2) {
+        return
+      }
+
+      const nextExpanded = !msg.productsExpanded
+      this.$set(msg, 'productsExpanded', nextExpanded)
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
     },
     beforeImageUpload (file) {
       const isValidType = ['image/jpeg', 'image/png'].includes(file.type)
@@ -266,12 +401,6 @@ export default {
       this.inputText = ''
       this.pendingImage = null
 
-      this.typingQueue = ''
-      if (this.typingTimer) {
-        clearInterval(this.typingTimer)
-        this.typingTimer = null
-      }
-
       this.messages.push({
         role: 'user',
         content: userMessage,
@@ -290,109 +419,105 @@ export default {
       this.messages.push({
         role: 'assistant',
         content: '',
-        products: []
+        products: [],
+        streaming: true
       })
 
-      this.typingTimer = setInterval(() => {
-        if (this.typingQueue.length > 0) {
-          const charsCount =
-            this.typingQueue.length > 50
-              ? 5
-              : this.typingQueue.length > 20
-              ? 3
-              : 1
-          const chars = this.typingQueue.substring(0, charsCount)
-          this.typingQueue = this.typingQueue.substring(charsCount)
-          this.messages[aiMessageIndex].content += chars
+      const aiMessage = this.messages[aiMessageIndex]
+      let renderQueue = ''
+      let streamDone = false
+
+      const stopRender = () => {
+        if (this.streamRenderTimer) {
+          clearInterval(this.streamRenderTimer)
+          this.streamRenderTimer = null
+        }
+      }
+
+      const finalizeRender = () => {
+        if (aiMessage) {
+          aiMessage.streaming = false
+        }
+        this.isLoading = false
+        stopRender()
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      }
+
+      const renderStep = () => {
+        if (!aiMessage) {
+          finalizeRender()
+          return
+        }
+
+        if (renderQueue.length > 0) {
+          const stepSize =
+            renderQueue.length > 180
+              ? 14
+              : renderQueue.length > 80
+              ? 8
+              : renderQueue.length > 30
+              ? 4
+              : 2
+          aiMessage.content += renderQueue.slice(0, stepSize)
+          renderQueue = renderQueue.slice(stepSize)
           this.$nextTick(() => {
             this.scrollToBottom()
           })
         }
-      }, 30)
+
+        if (streamDone && renderQueue.length === 0) {
+          finalizeRender()
+        }
+      }
+
+      stopRender()
+      this.streamRenderTimer = setInterval(renderStep, 16)
 
       try {
-        const response = await fetch('/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        await streamChat(
+          {
             message: this.formatMessageContent(
               this.messages[this.messages.length - 2]
             ),
             history
-          })
-        })
-
-        if (!response.ok) {
-          throw new Error('网络请求失败')
-        }
-
-        const reader = response.body && response.body.getReader
-          ? response.body.getReader()
-          : null
-        if (!reader) {
-          throw new Error('当前浏览器不支持流式读取')
-        }
-
-        const decoder = new TextDecoder('utf-8')
-        let buffer = ''
-        let isReading = true
-
-        while (isReading) {
-          const { done, value } = await reader.read()
-          if (done) {
-            isReading = false
-            break
-          }
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split(/(?:\r?\n){2}/)
-          buffer = lines.pop()
-
-          for (let line of lines) {
-            line = line.trim()
-            if (!line.startsWith('data:')) continue
-
-            const dataStr = line.replace(/^data:\s*/, '')
-            if (!dataStr) continue
-
-            try {
-              const data = JSON.parse(dataStr)
-
-              if (data.type === 'message') {
-                this.typingQueue += data.chunk || ''
-              } else if (data.type === 'products') {
-                if (!this.messages[aiMessageIndex].products) {
-                  this.$set(this.messages[aiMessageIndex], 'products', [])
-                }
-                this.messages[aiMessageIndex].products = data.data || []
-              } else if (data.type === 'error') {
-                this.typingQueue += `\n[发生错误: ${data.message}]`
-              }
-
-              this.$nextTick(() => {
-                this.scrollToBottom()
-              })
-            } catch (e) {
-              console.error('解析流数据失败:', e, '数据:', dataStr)
+          },
+          data => {
+            if (!aiMessage) {
+              return
             }
+
+            if (data.type === 'message') {
+              renderQueue += data.chunk || ''
+            } else if (data.type === 'products') {
+              const rawProducts = this.extractProductsPayload(data)
+              const normalizedProducts = this.normalizeProducts(rawProducts)
+              if (!aiMessage.products) {
+                this.$set(aiMessage, 'products', [])
+              }
+              aiMessage.products = normalizedProducts
+              this.$set(aiMessage, 'productsExpanded', false)
+            } else if (data.type === 'error') {
+              renderQueue += `\n[发生错误: ${data.message}]`
+            } else if (data.type === 'end') {
+              streamDone = true
+            }
+
+            this.$nextTick(() => {
+              this.scrollToBottom()
+            })
           }
-        }
+        )
       } catch (error) {
         console.error('发送消息失败:', error)
-        this.typingQueue += '\n抱歉，服务出现异常，请稍后再试。'
+        if (aiMessage) {
+          renderQueue += '\n抱歉，服务出现异常，请稍后再试。'
+        }
+        streamDone = true
       } finally {
-        const checkQueue = setInterval(() => {
-          if (this.typingQueue.length === 0) {
-            this.isLoading = false
-            if (this.typingTimer) {
-              clearInterval(this.typingTimer)
-              this.typingTimer = null
-            }
-            clearInterval(checkQueue)
-          }
-        }, 100)
+        streamDone = true
+        renderStep()
       }
     }
   }
@@ -449,8 +574,8 @@ export default {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: clamp(340px, 32vw, 520px);
-  height: clamp(520px, 76vh, 760px);
+  width: clamp(380px, 36vw, 580px);
+  height: clamp(560px, 80vh, 820px);
   max-height: calc(100vh - 24px);
   background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
   border: 1px solid var(--chat-border);
@@ -627,6 +752,10 @@ export default {
   white-space: normal;
 }
 
+.stream-content {
+  white-space: pre-wrap;
+}
+
 .markdown-body ::v-deep p {
   margin: 0 0 8px;
 }
@@ -730,6 +859,20 @@ export default {
   font-size: 14px;
   color: var(--chat-primary);
   font-weight: 700;
+}
+
+.products-toggle {
+  align-self: center;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+}
+
+.products-toggle:hover {
+  color: #6b7280;
 }
 
 .chat-input {
@@ -855,8 +998,8 @@ export default {
 
 @media (max-width: 1280px) {
   .ai-chat-window {
-    width: clamp(320px, 38vw, 460px);
-    height: clamp(500px, 78vh, 700px);
+    width: clamp(360px, 42vw, 520px);
+    height: clamp(540px, 80vh, 760px);
   }
 }
 
@@ -867,8 +1010,8 @@ export default {
   }
 
   .ai-chat-window {
-    width: min(calc(100vw - 24px), 460px);
-    height: min(78vh, 660px);
+    width: min(calc(100vw - 24px), 520px);
+    height: min(82vh, 720px);
     max-height: calc(100vh - 16px);
   }
 }
